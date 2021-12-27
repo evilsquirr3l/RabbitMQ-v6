@@ -13,11 +13,11 @@ namespace Subscriber.Controllers;
 public class GunsConsumerController : ControllerBase
 {
     private readonly RabbitMqConfiguration _configuration;
-    private readonly IDbContextFactory<GunsDbContext> _context;
+    private readonly IDbContextFactory<GunsDbContext> _dbContextFactory;
 
-    public GunsConsumerController(IOptions<RabbitMqConfiguration> configuration, IDbContextFactory<GunsDbContext> context)
+    public GunsConsumerController(IOptions<RabbitMqConfiguration> configuration, IDbContextFactory<GunsDbContext> dbContextFactory)
     {
-        _context = context;
+        _dbContextFactory = dbContextFactory;
         _configuration = configuration.Value;
     }
 
@@ -39,11 +39,11 @@ public class GunsConsumerController : ControllerBase
         };
 
         using var connection = factory.CreateConnection();
-        using var channel = connection.CreateModel();
+        using var model = connection.CreateModel();
 
-        channel.QueueDeclare(_configuration.QueueName, false, false, false, null);
+        model.QueueDeclare(_configuration.QueueName, false, false, false, null);
 
-        var consumer = new EventingBasicConsumer(channel);
+        var consumer = new EventingBasicConsumer(model);
 
         consumer.Received += (sender, e) =>
         {
@@ -54,7 +54,7 @@ public class GunsConsumerController : ControllerBase
             Console.WriteLine("Send to db!");
         };
 
-        channel.BasicConsume(_configuration.QueueName, true, consumer);
+        model.BasicConsume(_configuration.QueueName, true, consumer);
 
     }
     void SendToDb(string message)
@@ -67,10 +67,10 @@ public class GunsConsumerController : ControllerBase
 
         try
         {
-            using var db = _context.CreateDbContext();
-            db.Guns.AddAsync(dbGun);
+            using var db = _dbContextFactory.CreateDbContext();
+            db.Guns.Add(dbGun);
 
-            db.SaveChangesAsync();
+            db.SaveChanges();
         }
         catch (Exception e)
         {

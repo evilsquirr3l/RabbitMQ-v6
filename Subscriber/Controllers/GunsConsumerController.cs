@@ -1,8 +1,10 @@
 using System.Text;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using RabbitMQ.Client;
 using RabbitMQ.Client.Events;
+using Subscriber.Models;
 
 namespace Subscriber.Controllers;
 
@@ -11,9 +13,11 @@ namespace Subscriber.Controllers;
 public class GunsConsumerController : ControllerBase
 {
     private readonly RabbitMqConfiguration _configuration;
+    private readonly IDbContextFactory<GunsDbContext> _context;
 
-    public GunsConsumerController(IOptions<RabbitMqConfiguration> configuration)
+    public GunsConsumerController(IOptions<RabbitMqConfiguration> configuration, IDbContextFactory<GunsDbContext> context)
     {
+        _context = context;
         _configuration = configuration.Value;
     }
 
@@ -52,9 +56,26 @@ public class GunsConsumerController : ControllerBase
 
         channel.BasicConsume(_configuration.QueueName, true, consumer);
 
-        void SendToDb(string gun)
+    }
+    void SendToDb(string message)
+    {
+        var dbGun = new Gun()
         {
-            //TODO: send to db
+            Id = Guid.NewGuid().ToString(),
+            Description = message
+        };
+
+        try
+        {
+            using var db = _context.CreateDbContext();
+            db.Guns.AddAsync(dbGun);
+
+            db.SaveChangesAsync();
+        }
+        catch (Exception e)
+        {
+            Console.WriteLine(e);
+            throw;
         }
     }
 }

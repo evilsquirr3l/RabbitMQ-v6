@@ -21,9 +21,23 @@ public class GunsController : ControllerBase
     [HttpPost]
     public IActionResult CreateGun(Gun gun)
     {
+        ValidateModel(gun);
         PublishMessage(JsonConvert.SerializeObject(gun));
         
         return Ok("Message is sent!");
+    }
+
+    private void ValidateModel(Gun gun)
+    {
+        if (gun.Materials.Contains("wood"))
+        {
+            throw new ArgumentException("No wood in the gun, please!");
+        }
+
+        if (gun.Ttc.ShootingRange < 0)
+        {
+            throw new ArgumentException("Shooting range must be more than 0!");
+        }
     }
 
     private void PublishMessage(string gun)

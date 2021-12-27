@@ -1,5 +1,6 @@
 using EventBus.RabbitMQ.Standard.Configuration;
 using EventBus.RabbitMQ.Standard.Options;
+using Microsoft.EntityFrameworkCore;
 using Subscriber;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -21,6 +22,9 @@ void ConfigureRabbitMq()
     builder.Services.AddRabbitMqConnection(rabbitMqOptions);
     builder.Services.AddRabbitMqRegistration(rabbitMqOptions);
 }
+
+builder.Services.AddDbContextFactory<GunsDbContext>(opt =>
+    opt.UseNpgsql(builder.Configuration.GetConnectionString("GunsDB")));
 
 var app = builder.Build();
 
